@@ -43,6 +43,10 @@ class NetworkStack(object):
     def applicationSend(self, destination, applicationPort, pdu):
         self.outgoingPacketStackLock.acquire()
         self.outgoingPacketStack.insert(0,(destination, applicationPort,pdu))
+        # Inside a packet
+        # We have to modify this into (destination, applicationPort,(type,...,),pdu) and pdu will be the message.
+        # Packet structure: proto, type, @dest, @src, ttl, size, checksum, payload, checksum
+        # So : (type, destination, applicationPort, source, ttl, size, checksum, pdu, checksum)
         self.outgoingPacketStackLock.release()
 
 
