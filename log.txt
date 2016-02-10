@@ -1,0 +1,55 @@
+TCPServer - Got a short read of 0 bytes on header for connection  <socket.socket fd=17, family=AddressFamily.AF_INET, type=SocketKind.SOCK_STREAM, proto=0, laddr=('127.0.0.1', 10000), raddr=('127.0.0.1', 50800)> assuming disconnect
+TCPClient - Got a short read of 0 bytes on header for connection  <socket.socket fd=16, family=AddressFamily.AF_INET, type=SocketKind.SOCK_STREAM, proto=0, laddr=('127.0.0.1', 50800)> assuming disconnect
+ID:A LAYER2 - INFO - Initiating TOKEN
+ID:A LAYER5 - INFO - A: application_layer_out: sending (b'\x14TOKEN') 
+ID:A LAYER4 - INFO - A: Layer4_out: Sending (b'\x14TOKEN') to X 
+ID:A LAYER3 - INFO - A: Layer3_out: Sending out (b'\x14TOKEN') via interface 0 
+ID:A LAYER2 - INFO - A: Layer2_out: Sending out (b'\x14TOKEN') via interface 0 
+ID:A LAYER2 - INFO - A: Layer2_out: Sleeping for 3s
+ID:B LAYER2 - INFO - B: Layer2_in: Received (b'\x14TOKEN') on Interface 0 
+ID:B LAYER2 - INFO - B: Layer2_in: tirage (b'\x14TOKEN') -> layer3_in
+
+ID:B LAYER3 - INFO - B: Layer3_in: Received (b'\x14TOKEN') on interface 0 
+ID:B LAYER3 - INFO - B: Layer3_in: tirage (b'\x14TOKEN') -> Packet to be destroyed
+
+ID:B LAYER4 - INFO - B: Layer4_in: Received (None) from None 
+ID:B LAYER5 - INFO - B: application_layer_in: received (None) 
+ID:B LAYER5 - INFO - B: application_layer_out: sending (b'\nMessage n\xc2\xb00 from B to A,0,A') 
+ID:B LAYER4 - INFO - B: Layer4_out: Sending (b'\nMessage n\xc2\xb00 from B to A,0,A') to A 
+ID:B LAYER3 - INFO - B: Layer3_out: Sending out (b'\nMessage n\xc2\xb00 from B to A,0,A') via interface 0 
+ID:B LAYER2 - INFO - B: Layer2_out: Sending out (b'\nMessage n\xc2\xb00 from B to A,0,A') via interface 0 
+ID:B LAYER2 - INFO - B: Layer2_out: Sleeping for 3s
+ID:A LAYER2 - INFO - A: Layer2_in: Received (b'\nMessage n\xc2\xb00 from B to A,0,A') on Interface 0 
+ID:A LAYER2 - INFO - A: Layer2_in: tirage (b'\nMessage n\xc2\xb00 from B to A,0,A') -> layer3_in
+
+ID:A LAYER3 - INFO - A: Layer3_in: Received (b'\nMessage n\xc2\xb00 from B to A,0,A') on interface 0 
+ID:A LAYER3 - INFO - A: Layer3_in: tirage (b'\nMessage n\xc2\xb00 from B to A,0,A') -> Packet to be destroyed
+
+ID:A LAYER4 - INFO - A: Layer4_in: Received (None) from None 
+ID:A LAYER5 - INFO - A: application_layer_in: received (None) 
+ID:A LAYER5 - INFO - A: application_layer_out: sending (b'\nMessage n\xc2\xb00 from A to B,0,B') 
+ID:A LAYER4 - INFO - A: Layer4_out: Sending (b'\nMessage n\xc2\xb00 from A to B,0,B') to B 
+ID:A LAYER3 - INFO - A: Layer3_out: Sending out (b'\nMessage n\xc2\xb00 from A to B,0,B') via interface 0 
+ID:A LAYER2 - INFO - A: Layer2_out: Sending out (b'\nMessage n\xc2\xb00 from A to B,0,B') via interface 0 
+ID:A LAYER2 - INFO - A: Layer2_out: Sleeping for 3s
+ID:B LAYER2 - INFO - B: Layer2_in: Received (b'\nMessage n\xc2\xb00 from A to B,0,B') on Interface 0 
+ID:B LAYER2 - INFO - B: Layer2_in: tirage (b'\nMessage n\xc2\xb00 from A to B,0,B') -> layer3_in
+
+ID:B LAYER3 - INFO - B: Layer3_in: Received (b'\nMessage n\xc2\xb00 from A to B,0,B') on interface 0 
+ID:B LAYER3 - INFO - B: Layer3_in: tirage (b'\nMessage n\xc2\xb00 from A to B,0,B') -> layer4_in
+
+ID:B LAYER4 - INFO - B: Layer4_in: Received (b'\nMessage n\xc2\xb00 from A to B,0,B') from A 
+ID:B LAYER5 - INFO - B: application_layer_in: received (b'\nMessage n\xc2\xb00 from A to B,0,B') 
+ID:B LAYER5 - INFO - B: application_layer_out: sending (b'\nMessage n\xc2\xb01 from B to A,1,A') 
+ID:B LAYER4 - INFO - B: Layer4_out: Sending (b'\nMessage n\xc2\xb01 from B to A,1,A') to A 
+ID:B LAYER3 - INFO - B: Layer3_out: Sending out (b'\nMessage n\xc2\xb01 from B to A,1,A') via interface 0 
+^CException ignored in: <module 'threading' from '/Users/anthonygriffon/anaconda3/envs/py3k/lib/python3.5/threading.py'>
+Traceback (most recent call last):
+  File "/Users/anthonygriffon/anaconda3/envs/py3k/lib/python3.5/threading.py", line 1288, in _shutdown
+    t.join()
+  File "/Users/anthonygriffon/anaconda3/envs/py3k/lib/python3.5/threading.py", line 1054, in join
+    self._wait_for_tstate_lock()
+  File "/Users/anthonygriffon/anaconda3/envs/py3k/lib/python3.5/threading.py", line 1070, in _wait_for_tstate_lock
+    elif lock.acquire(block, timeout):
+KeyboardInterrupt
+
