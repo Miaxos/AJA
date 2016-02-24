@@ -1,3 +1,5 @@
 test_app:
   script:
+    - ls
+    - apt-get update
     - python3 mainComplete.py
