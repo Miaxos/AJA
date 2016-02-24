@@ -60,6 +60,7 @@ class NetworkStack(object):
     # If pdu is None, the packet is not valid
     # forceToken determines that the return packet needs to be a TOKEN
     def application_layer_incomingPDU(self, forceToken, source, pdu):
+        # Layer 5 dans l'application (Le premier element du paquet se trouve dedans)
         time.sleep(self.__layerDelay)
         self.__debugOut.debugOutLayer(self.__ownIdentifier,5,self.__debugOut.INFO,"%s: application_layer_in: received (%s) " % (self.__ownIdentifier,pdu))
         
@@ -74,23 +75,38 @@ class NetworkStack(object):
         
         # We dive back down into the network stack
         self.application_layer_outgoingPDU(forceToken)
-                
 
     # Please adapt if required: This is the top layer that retrieves one element from the application layer 
     def application_layer_outgoingPDU(self, forceToken=False):
+        # Layer 5 dans l'application (Le premier element du paquet se trouve dedans)
+        # On récupère les infos de l'application, dont le type de paquet qu'on balance, pour qui, avec les données.
         time.sleep(self.__layerDelay)
         self.outgoingPacketStackLock.acquire()
         if len(self.outgoingPacketStack)==0 or forceToken:
-            destination="X"
+            destination= 15
             applicationPort=20
             sdu="TOKEN"
         else:
-            destination,applicationPort,sdu=self.outgoingPacketStack.pop()
+            destination,applicationPort, sdu=self.outgoingPacketStack.pop()
         self.outgoingPacketStackLock.release()
+        # On doit mettre en place le checksum !
+
+        # On va avoir une structure genre pdu= applicationPort.to_bytes(1,byteorder="little",signed=False)+sdu.encode("UTF-8")
         
-        pdu=applicationPort.to_bytes(1,byteorder="little",signed=False)+sdu.encode("UTF-8")
+        # Data
+        pdu=sdu.encode("UTF-8")
+        
+        #Dest
+        pdu=destination.to_bytes(1,byteorder="little",signed=False)+pdu
+
+        # Checksum
+        pdu=HashageAJA(pdu).to_bytes(2,byteorder="little")+pdu
+        
+        # Protocol
+        pdu=applicationPort.to_bytes(1,byteorder="little",signed=False)+pdu
         self.__debugOut.debugOutLayer(self.__ownIdentifier,5,self.__debugOut.INFO,"%s: application_layer_out: sending (%s) " % (self.__ownIdentifier,pdu))
         self.layer4_outgoingPDU(destination, applicationPort, pdu)
+
 
         
     # Please adapt!
@@ -141,19 +157,60 @@ class NetworkStack(object):
 
     # Please adapt
     def layer2_incomingPDU(self, interface, pdu):
+        # On doit décider si le paquet est pour nous ou pas.
+        # On doit pour cela verifier si le protocole est le notre.
         time.sleep(self.__layerDelay)
         self.__debugOut.debugOutLayer(self.__ownIdentifier,2,self.__debugOut.INFO,"%s: Layer2_in: Received (%s) on Interface %d " % (self.__ownIdentifier, pdu, interface))
         if interface == 0 : # same ring
             # Let us assume that here we treat the question whether this packet is addressed to us or not
             # The answer may be based on some obscure network protocol
-            # With a chance of 50%, we forward the packet
-            # With a chance of 50%, we receive the packet and say that it comes the source "A"
-            if random.randint(0,1):
-                self.__debugOut.debugOutLayer(self.__ownIdentifier,2,self.__debugOut.INFO,"%s: Layer2_in: tirage (%s) -> layer2_out\n" % (self.__ownIdentifier, pdu))
-                self.layer2_outgoingPDU(interface,pdu)
-            else:
-                self.__debugOut.debugOutLayer(self.__ownIdentifier,2,self.__debugOut.INFO,"%s: Layer2_in: tirage (%s) -> layer3_in\n" % (self.__ownIdentifier, pdu))
+
+            # On doit décapsuler le paquet pour check le protocole.
+            if pdu!=None:
+                # On prend le premier octet pour check si c'est notre protocol !
+                protocol=int.from_bytes(pdu[0:1],byteorder="little",signed=False)
+                pdu=pdu[1:]
+            if protocol == 20:
+                # Numero du protocol AJA
+                self.__debugOut.debugOutLayer(self.__ownIdentifier,2,self.__debugOut.INFO,"%s: Layer2_in: [AJA] (%s) -> Checksum ?\n" % (self.__ownIdentifier, pdu))
+                # On prend le checksum (16bits)
+                checksum = int.from_bytes(pdu[0:2],byteorder="little",signed=False)
+                pdu=pdu[2:]
+                print(pdu)
+                
+                print(HashageAJA(pdu), checksum)
+
+                if checksum == HashageAJA(pdu):
+                    # Checksum OK
+                    # Intrégrité vérifié pour le moment, on regarde si il est pour nous.
+                    self.__debugOut.debugOutLayer(self.__ownIdentifier,2,self.__debugOut.INFO,"%s: Layer2_in: [AJA] (%s) -> Checksum OK\n" % (self.__ownIdentifier, pdu))
+                    self.__debugOut.debugOutLayer(self.__ownIdentifier,2,self.__debugOut.INFO,"%s: Layer2_in: [AJA] (%s) -> Dest ?\n" % (self.__ownIdentifier, pdu))
+                    
+                    # Type check
+                    # On récupère le type
+
+                    # On regarde pour qui il est !
+                    dest = int.from_bytes(pdu[0:1],byteorder="little",signed=False)
+                    pdu = pdu[1:]
+                    self.__debugOut.debugOutLayer(self.__ownIdentifier,2,self.__debugOut.INFO,"%s: Layer2_in: [AJA] -> Dest %s \n" % (self.__ownIdentifier, str(dest)))
+                    # Destination check
+                    # -> destination
+
+                    # Src
+
+                    # TTL
+
+                else:
+                    # Checksum pas OK
+                    # Destruction du paquet
+                    print("Ca merde")
+
                 self.layer3_incomingPDU(interface,pdu)
+            else:
+                self.__debugOut.debugOutLayer(self.__ownIdentifier,2,self.__debugOut.INFO,"%s: Layer2_in: [Not AJA] (%s) -> layer2_out\n" % (self.__ownIdentifier, pdu))
+                self.layer2_outgoingPDU(interface,pdu)
+
+        
         else: # Another Ring, this is for routing, see later
             pass
 
@@ -164,3 +221,6 @@ class NetworkStack(object):
             self.__debugOut.debugOutLayer(self.__ownIdentifier,2,self.__debugOut.INFO,"%s: Layer2_out: Sleeping for %ds" % (self.__ownIdentifier,self.__sendDelay))
             time.sleep(self.__sendDelay)
         self.__layerPhy.API_sendData(interface, pdu)
+
+def HashageAJA(sdu):
+    return int.from_bytes(sdu, byteorder='little')%65500

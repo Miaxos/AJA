@@ -5,7 +5,7 @@ Created on 17 mai 2015
 @author: barkowsky-m
 '''
 
-from NetworkStack import NetworkStack
+from NetworkStackAJA import NetworkStack
 from NetworkStackAlternative import NetworkStackAlternative
 import threading
 import time
@@ -99,7 +99,9 @@ class Computer(object):
             for d in destinationIdentifier:
                 thisMessage="Message n°%d from %s to %s,%s,%s" % (i, self.__ownIdentifier, d,i,d)
                 #thisMessage="%s Sending Message n°%d to %s,%d,%s" % (self.__ownIdentifier, i,d,i,d)
+                self.__networkstack.applicationSend(d,10,"Test")
                 self.__networkstack.applicationSend(d,10,thisMessage)
+
 
     def debugConfigureNetworkstackDelay(self,sendDelay=None,layerDelay=None):
         self.__networkstack.configureDelay(sendDelay,layerDelay)
