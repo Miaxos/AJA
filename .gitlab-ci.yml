@@ -1,0 +1,3 @@
+test_app:
+  script:
+    - python3 mainComplete.py
