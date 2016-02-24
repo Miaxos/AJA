@@ -100,7 +100,6 @@ class Computer(object):
                 thisMessage="Message n°%d from %s to %s,%s,%s" % (i, self.__ownIdentifier, d,i,d)
                 #thisMessage="%s Sending Message n°%d to %s,%d,%s" % (self.__ownIdentifier, i,d,i,d)
                 self.__networkstack.applicationSend(d,10,thisMessage)
-                # applicationSend(d,10,(type.........), thisMessage)
 
     def debugConfigureNetworkstackDelay(self,sendDelay=None,layerDelay=None):
         self.__networkstack.configureDelay(sendDelay,layerDelay)

@@ -1,5 +1,4 @@
 ﻿# -*- coding: utf-8 -*-
-
 from PhyCoordinator.PhyNetwork import PhyNetwork
 from Computer import Computer
 import time
@@ -26,6 +25,10 @@ if __name__ == '__main__':
     #
     # Various DebugLevels have been predefined, notably NONE, ERROR, WARNING, INFO, ALL (see Tools/DebugOut for more information)
       
+    # If you are using MacOS, the tkinter needs to run in the main thread
+    # We could put the setup into another thread that would liberate the main thread thus, this is a workaround for the moment
+    macosTkinterWorkaround=True
+
     __debugOut=DebugOut()
 
     __debugOut.setDebugLevelForSource(__debugOut.srcComputer,       __debugOut.NONE)
@@ -41,7 +44,7 @@ if __name__ == '__main__':
     # This starts the graphical user interface
     # Computers (Nodes) are added automatically unless contained in ignoreComputers
     # The layerSelection determines the layers that are displayed graphically
-    debugGui=DebugGui(ignoreComputer=["PhyMaster","Main"],layerSelection=[1,2,16,15,14,13,12,11],geometry="1800x1000+10+10")
+    debugGui=DebugGui(ignoreComputer=["PhyMaster","Main"],layerSelection=[1,2,16,15,14,13,12,11],geometry="1800x1000+10+10",macosTkinterWorkaround=macosTkinterWorkaround)
     
     # This should be outdated
     # __debugOut.debugOutSource("Main",__debugOut.srcComputer,__debugOut.INFO,"Attention : les messages ne s'affichent pas toujours de façon séquentielle !")
@@ -93,9 +96,11 @@ if __name__ == '__main__':
 
     # Computer 1 initiates the TOKEN manually in this protocol
     computer1.initiateToken()
-
+    print("Token sent")
     # We may want to have this third computer leave the network after some time
     if False:
         time.sleep(10)
         computer3.stopComputer()
 
+    if macosTkinterWorkaround:
+        debugGui.launch()

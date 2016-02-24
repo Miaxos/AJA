@@ -51,13 +51,16 @@ class DebugGui(tk.Frame):
         def changeColor(self,source,color):
             self.layerLabel[source].configure(bg=color)
             
-    def __init__(self, root=None, ignoreComputer=["PhyMaster","Main"],layerSelection=[1,2,11,12,13,14,15,16],geometry=None):
+    def __init__(self, root=None, ignoreComputer=["PhyMaster","Main"],layerSelection=[1,2,11,12,13,14,15,16],geometry=None,macosTkinterWorkaround=False):
         self.ignoreComputer=ignoreComputer
         self.layerSelection=layerSelection
         self.geometry=geometry
         
-        guiThread=threading.Thread(target=self.launch,args=(root,))
-        guiThread.start()
+        if macosTkinterWorkaround:
+            print("DebugGui-init: macosTkinterWorkaround is active, please run the launch() yourself in the main thread")
+        else:
+            guiThread=threading.Thread(target=self.launch,args=(root,))
+            guiThread.start()
         
     def doQuit(self):
         self.root.destroy()

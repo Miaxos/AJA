@@ -43,10 +43,6 @@ class NetworkStack(object):
     def applicationSend(self, destination, applicationPort, pdu):
         self.outgoingPacketStackLock.acquire()
         self.outgoingPacketStack.insert(0,(destination, applicationPort,pdu))
-        # Inside a packet
-        # We have to modify this into (destination, applicationPort,(type,...,),pdu) and pdu will be the message.
-        # Packet structure: proto, type, @dest, @src, ttl, size, checksum, payload, checksum
-        # So : (type, destination, applicationPort, source, ttl, size, checksum, pdu, checksum)
         self.outgoingPacketStackLock.release()
 
 
@@ -54,9 +50,11 @@ class NetworkStack(object):
 #############################################################################################################################################
 
     # Please change: This sends the first TOKEN to the ring
+    # In fact, sending a TOKEN requires the creation of a new thread
     def initiateToken(self):
         self.__debugOut.debugOutLayer(self.__ownIdentifier,2,self.__debugOut.INFO,"Initiating TOKEN" )
-        self.application_layer_outgoingPDU(forceToken=True)
+        tokenThread=threading.Thread(target=self.application_layer_outgoingPDU, args=(True,))
+        tokenThread.start()
 
     # Please adapt if required : This is the top layer that usually sends the data to the application
     # If pdu is None, the packet is not valid

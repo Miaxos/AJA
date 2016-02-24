@@ -19,6 +19,9 @@ if __name__ == '__main__':
     # You may change the parameter of masterHost in order to connect to a remote PhyMaster
     # ============================================================================
 
+    # If you are using MacOS, the tkinter needs to run in the main thread
+    macosTkinterWorkaround=True
+
     # We initialize here the debugging framework:
     # Each part of the computer has a debug source identifier
     # 0 is reserved for internal communication
@@ -45,7 +48,7 @@ if __name__ == '__main__':
     # Computers (Nodes) are added automatically unless contained in ignoreComputers
     # The layerSelection determines the layers that are displayed graphically
     masterHostIp='127.0.0.1'
-    debugGui=DebugGui(ignoreComputer=["PhyMaster","Main"],layerSelection=[1,2,16,15,14,13,12,11])
+    debugGui=DebugGui(ignoreComputer=["PhyMaster","Main"],layerSelection=[1,2,16,15,14,13,12,11],macosTkinterWorkaround=macosTkinterWorkaround)
     
     __debugOut.debugOutSource("Main",__debugOut.srcComputer,__debugOut.INFO,"Instanciation computer 1")
     computer1=Computer(ownIdentifier="C", masterHost=masterHostIp, baseport=10000,statusUpdateSeconds=10)
@@ -60,3 +63,5 @@ if __name__ == '__main__':
 #    time.sleep(10)
 #    os._exit(0)
     
+    if macosTkinterWorkaround:
+        debugGui.launch()

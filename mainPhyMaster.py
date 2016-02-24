@@ -27,6 +27,9 @@ if __name__ == '__main__':
     # 12 or layer=2 is used for the first network layer that is up to you to implement
     #
     # Various DebugLevels have been predefined, notably NONE, ERROR, WARNING, INFO, ALL (see Tools/DebugOut for more information)
+
+    # If you are using MacOS, the tkinter needs to run in the main thread
+    macosTkinterWorkaround=True
       
     __debugOut=DebugOut()
 
@@ -43,7 +46,7 @@ if __name__ == '__main__':
     # This starts the graphical user interface
     # Computers (Nodes) are added automatically unless contained in ignoreComputers
     # The layerSelection determines the layers that are displayed graphically
-    debugGui=DebugGui(ignoreComputer=["PhyMaster","Main"],layerSelection=[1,2,16,15,14,13,12,11],geometry="1800x1000+10+10")
+    debugGui=DebugGui(ignoreComputer=["PhyMaster","Main"],layerSelection=[1,2,16,15,14,13,12,11],geometry="1800x1000+10+10",macosTkinterWorkaround=macosTkinterWorkaround)
     
     # We try to be the master first
     # If you want to have more nodes on a single ring, please change numberOfNodesPerRing
@@ -54,3 +57,6 @@ if __name__ == '__main__':
     __debugOut.debugOutSource("Main",__debugOut.srcComputer,__debugOut.INFO,"Instanciation ordinateur pour acceder au deboggage")
     computer1=Computer(ownIdentifier="Z", masterHost='127.0.0.1', baseport=10000, autoEnter=False)
     computer1.enableGlobalDebug()
+
+    if macosTkinterWorkaround:
+        debugGui.launch()

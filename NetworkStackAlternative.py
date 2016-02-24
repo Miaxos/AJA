@@ -50,9 +50,11 @@ class NetworkStackAlternative(object):
 #############################################################################################################################################
 
     # Please change: This sends the first TOKEN to the ring
+    # In fact, sending a TOKEN requires the creation of a new thread
     def initiateToken(self):
         self.__debugOut.debugOutLayer(self.__ownIdentifier,2,self.__debugOut.INFO,"Initiating TOKEN" )
-        self.application_layer_outgoingPDU(forceToken=True)
+        tokenThread=threading.Thread(target=self.application_layer_outgoingPDU, args=(True,))
+        tokenThread.start()
 
     # Please adapt if required : This is the top layer that usually sends the data to the application
     # If pdu is None, the packet is not valid
