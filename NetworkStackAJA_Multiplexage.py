@@ -13,8 +13,9 @@ class NetworkStack(object):
         self.__applicationList=[]
         self.__sendDelay=0
         self.__layerDelay=0
-        self.__layerPhy=LayerPhy.LayerPhy(ownIdentifier, upperLayerCallbackFunction=self.layer2_incomingPDU, masterHost=masterHost, baseport=baseport, autoEnter=autoEnter)
+        self.__layerPhy=LayerPhy.LayerPhy(ownIdentifier, upperLayerCallbackFunction=self.layerT1_incomingPDU, masterHost=masterHost, baseport=baseport, autoEnter=autoEnter)
         # You may want to change the following part
+        self.AppSend=0
         self.__ownIdentifier=ownIdentifier
         self.outgoingPacketStack=[]
         self.outgoingPacketStackLock=threading.Lock()
@@ -47,6 +48,11 @@ class NetworkStack(object):
 
 
 #############################################################################################################################################
+#
+# On limite les messages à 255 caractères.
+# Un train peut manage 3 messages differents.
+#
+#
 #############################################################################################################################################
 
     # Please change: This sends the first TOKEN to the ring
@@ -54,7 +60,7 @@ class NetworkStack(object):
     def initiateToken(self):
         # On définit le maître par un envoie d'un token
         self.__debugOut.debugOutLayer(self.__ownIdentifier,2,self.__debugOut.INFO,"Initiating TOKEN" )
-        tokenThread=threading.Thread(target=self.application_layer_outgoingPDU, args=(0,))
+        tokenThread=threading.Thread(target=self.layerT5_outgoingPDU, args=(3, self.__ownIdentifier, self.application_layer_outgoingPDU(10)[0], self.application_layer_outgoingPDU(10)[0], self.application_layer_outgoingPDU(10)[0]))
         tokenThread.start()
 
     # Please adapt if required : This is the top layer that usually sends the data to the application
@@ -77,7 +83,8 @@ class NetworkStack(object):
         
         # We dive back down into the network stack
         if (localtype == 2):
-            self.application_layer_outgoingPDU(3)
+            next, message = self.application_layer_outgoingPDU(5)
+            return next, message
 
     # Please adapt if required: This is the top layer that retrieves one element from the application layer 
     def application_layer_outgoingPDU(self, localtype=0):
@@ -86,6 +93,7 @@ class NetworkStack(object):
         time.sleep(self.__layerDelay)
         self.outgoingPacketStackLock.acquire()
         if localtype==0:
+            # self.layerT5_outgoingPDU(0, self.__ownIdentifier, self.application_layer_outgoingPDU(10), self.application_layer_outgoingPDU(10), application_layer_outgoingPDU(10))
             destination= 1
             applicationPort=20
             sdu="TOKEN"
@@ -111,9 +119,25 @@ class NetworkStack(object):
                 # On balance donc le token des qu'on a reçu l'accusé de reception
                 destination= 1
                 applicationPort=20
-                sdu="TOKEN"
+                sdu="Reception"
                 type = 0
-
+            elif (localtype == 5):
+                if(len(self.outgoingPacketStack)==0):
+                    # On balance le token
+                    destination= 1
+                    applicationPort=20
+                    sdu="VIDE"
+                    type = 10
+                else:
+                    destination,applicationPort, sdu=self.outgoingPacketStack.pop()
+                    type = 2
+            elif (localtype == 10):
+                sdu = "VIDE"
+                type = 10
+                applicationPort = 20
+                destination = 1
+        while CheckMsg(sdu.encode("UTF-8")):
+            sdu = ' ' + sdu
         self.outgoingPacketStackLock.release()
 
         # Data
@@ -123,7 +147,8 @@ class NetworkStack(object):
         pdu=applicationPort.to_bytes(1,byteorder="little",signed=False)+pdu
 
         self.__debugOut.debugOutLayer(self.__ownIdentifier,5,self.__debugOut.INFO,"%s: application_layer_out: sending (%s) " % (self.__ownIdentifier,pdu))
-        self.layer7_outgoingPDU(DestinationtoID(destination), ord(self.__ownIdentifier), type, pdu, 255)
+        next, message = self.layer7_outgoingPDU(DestinationtoID(destination), ord(self.__ownIdentifier), type, pdu, 255)
+        return next, message
 
 # --------- ENCAPSULAGE --------
 
@@ -134,36 +159,45 @@ class NetworkStack(object):
         self.__debugOut.debugOutLayer(self.__ownIdentifier,7,self.__debugOut.INFO,"%s: Layer7_out: Sending (%s) to %s " % (self.__ownIdentifier, pdu, destination))
         
         pdu=HashageAJA(pdu).to_bytes(2,byteorder="little")+pdu
-        
-        self.layer6_outgoingPDU(destination, source, type, pdu, TTL)
+
+        next, message = self.layer6_outgoingPDU(destination, source, type, pdu, TTL)
+        return next, message
 
     def layer6_outgoingPDU(self, destination, source, type, pdu, TTL=255):
         # encapsulage source
         time.sleep(self.__layerDelay)
         self.__debugOut.debugOutLayer(self.__ownIdentifier,6,self.__debugOut.INFO,"%s: Layer6_out: Sending (%s) to %s " % (self.__ownIdentifier, pdu, destination))
         pdu=source.to_bytes(1,byteorder="little")+pdu
-        self.layer5_outgoingPDU(destination, type, pdu, TTL)
+        next, message = self.layer5_outgoingPDU(destination, type, pdu, TTL)
+        return next, message
 
     def layer5_outgoingPDU(self, destination, type, pdu, TTL=255):
         # encapsulage destination
         time.sleep(self.__layerDelay)
         self.__debugOut.debugOutLayer(self.__ownIdentifier,5,self.__debugOut.INFO,"%s: Layer5_out: Sending (%s) to %s " % (self.__ownIdentifier, pdu, destination))
         pdu=destination.to_bytes(1,byteorder="little")+pdu
-        self.layer4_outgoingPDU(type, pdu, TTL)
+        next, message = self.layer4_outgoingPDU(type, pdu, TTL)
+        return next, message
 
     def layer4_outgoingPDU(self, type, pdu, TTL=255):
         # encapsulage TTL
         time.sleep(self.__layerDelay)
         self.__debugOut.debugOutLayer(self.__ownIdentifier,4,self.__debugOut.INFO,"%s: Layer4_out: Sending (%s)" % (self.__ownIdentifier, pdu))
         pdu=TTL.to_bytes(1,byteorder="little")+pdu
-        self.layer3_outgoingPDU(type, pdu)
+        next, message = self.layer3_outgoingPDU(type, pdu)
+        return next, message
 
     def layer3_outgoingPDU(self, type, pdu):
         # encapsulage Type
         time.sleep(self.__layerDelay)
         self.__debugOut.debugOutLayer(self.__ownIdentifier,3,self.__debugOut.INFO,"%s: Layer3_out: Sending (%s)" % (self.__ownIdentifier, pdu))
         pdu=type.to_bytes(1,byteorder="little")+pdu
-        self.layer2_outgoingPDU(0, pdu)
+        if type == 10:
+            message = 0
+        else:
+            message = 1
+        next = self.layer2_outgoingPDU(0, pdu)
+        return next, message
 
     #4 -> TTL
 
@@ -173,10 +207,11 @@ class NetworkStack(object):
         proto = 26
         self.__debugOut.debugOutLayer(self.__ownIdentifier,2,self.__debugOut.INFO,"%s: Layer2_out: Sending (%s) via interface %d " % (self.__ownIdentifier, pdu, interface))
         pdu=proto.to_bytes(1,byteorder="little")+pdu
-        if self.__sendDelay!=0:
-            self.__debugOut.debugOutLayer(self.__ownIdentifier,2,self.__debugOut.INFO,"%s: Layer2_out: Sleeping for %ds" % (self.__ownIdentifier,self.__sendDelay))
-            time.sleep(self.__sendDelay)
-        self.__layerPhy.API_sendData(interface, pdu)
+        # if self.__sendDelay!=0:
+        #     self.__debugOut.debugOutLayer(self.__ownIdentifier,2,self.__debugOut.INFO,"%s: Layer2_out: Sleeping for %ds" % (self.__ownIdentifier,self.__sendDelay))
+        #     time.sleep(self.__sendDelay)
+        # self.__layerPhy.API_sendData(interface, pdu)
+        return pdu
 
 # ----------------------------------- END NEW ------------------
 
@@ -196,10 +231,12 @@ class NetworkStack(object):
             if protocol == 26:
                 # Numero du protocol AJA
                 self.__debugOut.debugOutLayer(self.__ownIdentifier,2,self.__debugOut.INFO,"%s: Layer2_in: [AJA] (%s) -> Check Type\n" % (self.__ownIdentifier, pdu))
-                self.layer3_incomingPDU(pdu)
+                next, message = self.layer3_incomingPDU(pdu)
+                return next, message
             else:
                 self.__debugOut.debugOutLayer(self.__ownIdentifier,2,self.__debugOut.INFO,"%s: Layer2_in: [Not AJA] (%s) -> layer2_out\n" % (self.__ownIdentifier, pdu))
-                self.layer2_outgoingPDU(interface,pdu)
+                next = self.layer2_outgoingPDU(interface,pdu)
+                return next, 1
         else:
             pass
 
@@ -213,18 +250,22 @@ class NetworkStack(object):
         self.__debugOut.debugOutLayer(self.__ownIdentifier,3,self.__debugOut.INFO,"%s: Layer3_in: Type: (%s)" % (self.__ownIdentifier, str(localtype)))
         if localtype == 0:
             # Token
-            self.layer4_incomingPDU(localtype, pdu)
+            next, message = self.layer4_incomingPDU(localtype, pdu)
+            return next, message
         elif localtype == 1:
             # Type Accusé de reception
             # Il s'agit de voir si on a fait le tour.
-            self.layer4_incomingPDU(localtype,pdu)
+            next, message = self.layer4_incomingPDU(localtype,pdu)
+            return next, message
         elif localtype == 2:
             # Type Données
             # Message
-            self.layer4_incomingPDU(localtype, pdu)
+            next, message = self.layer4_incomingPDU(localtype, pdu)
+            return next, message
         elif localtype == 3:
             # accusé message reçu
-             self.layer4_incomingPDU(localtype, pdu)
+             next, message = self.layer4_incomingPDU(localtype, pdu)
+             return next, message
         elif localtype == 4:
             # Type RetId
             None
@@ -234,6 +275,9 @@ class NetworkStack(object):
         elif localtype == 6:
             # Type CountTTl
             None
+        elif localtype == 10:
+            next, message = self.application_layer_outgoingPDU(5)
+            return next, message
         else:
             # Type invalide, destruction du paquet.
             pass
@@ -246,29 +290,33 @@ class NetworkStack(object):
             pdu = pdu[1:]
         self.__debugOut.debugOutLayer(self.__ownIdentifier,4,self.__debugOut.INFO,"%s: Layer4_in: TTL (%s)" % (self.__ownIdentifier, str(TTL)))
         if localtype == 0:
-            self.layer5_incomingPDU(localtype, TTL, pdu)
+            next, message = self.layer5_incomingPDU(localtype, TTL, pdu)
+            return next, message
         elif localtype == 1:
             # Type Accusé de reception
             # On decrease le TTL
             TTL = TTL - 1
-            self.layer5_incomingPDU(localtype,TTL,pdu)
+            next, message = self.layer5_incomingPDU(localtype,TTL,pdu)
+            return next, message
         elif localtype == 2:
             # Type Données
             # On decrease le TTL
             TTL = TTL - 1
-            self.layer5_incomingPDU(localtype,TTL,pdu)
+            next, message = self.layer5_incomingPDU(localtype,TTL,pdu)
+            return next, message
         elif localtype == 3:
             TTL = TTL - 1
-            self.layer5_incomingPDU(localtype,TTL,pdu)
+            next, message = self.layer5_incomingPDU(localtype,TTL,pdu)
+            return next, message
         elif localtype == 4:
             # Type RetId
             None
         elif localtype == 5:
             # Type Update TTL
             None
-        elif localtype == 6:
-            # Type CountTTl
-            None
+        elif localtype == 10:
+            next, message = self.layer5_incomingPDU(localtype,TTL,pdu)
+            return next, message
         else:
             # Type invalide, destruction du paquet.
             pass
@@ -282,32 +330,40 @@ class NetworkStack(object):
             pdu = pdu[1:]
         self.__debugOut.debugOutLayer(self.__ownIdentifier,5,self.__debugOut.INFO,"%s: Layer5_in: Destination (%s)" % (self.__ownIdentifier, str(destination)))
         if localtype == 0:
-            self.layer6_incomingPDU(destination, localtype, TTL, pdu)
+
+            next, message = self.layer6_incomingPDU(destination, localtype, TTL, pdu)
+            return next, message
         elif localtype == 1:
             # Type Accusé de reception
             if destination != ord(self.__ownIdentifier):
                 # Si c'est pas nous alors
                 # On fait tourner.
-                self.layer5_outgoingPDU(destination, localtype, pdu, TTL)
+                next, message = self.layer5_outgoingPDU(destination, localtype, pdu, TTL)
+                return next, message
             else:
                 # On a terminé le tour donc on diffuse un message.
-                self.layer6_incomingPDU(destination, localtype, TTL, pdu)
+                next, message = self.layer6_incomingPDU(destination, localtype, TTL, pdu)
+                return next, message
         elif localtype == 2:
             # Type Données
             # Message
             if destination != ord(self.__ownIdentifier):
                 # Si c'est pas nous alors
                 # On fait tourner.
-                self.layer5_outgoingPDU(destination, localtype, pdu, TTL)
+                next, message = self.layer5_outgoingPDU(destination, localtype, pdu, TTL)
+                return next, message
             else:
                 # On a terminé le tour donc on diffuse un message.
-                self.layer6_incomingPDU(destination, localtype, TTL, pdu)
+                next, message = self.layer6_incomingPDU(destination, localtype, TTL, pdu)
+                return next, message
         elif localtype == 3:
             # Accusé de réception message
             if destination != ord(self.__ownIdentifier):
-                self.layer5_outgoingPDU(destination, localtype, pdu, TTL)
+                next, message = self.layer5_outgoingPDU(destination, localtype, pdu, TTL)
+                return next, message
             else:
-                self.application_layer_outgoingPDU(0)
+                next, message = self.application_layer_outgoingPDU(0)
+                return next, message
         elif localtype == 4:
             # Type RetId
             None
@@ -330,14 +386,17 @@ class NetworkStack(object):
         self.__debugOut.debugOutLayer(self.__ownIdentifier,6,self.__debugOut.INFO,"%s: Layer6_in: Source (%s)" % (self.__ownIdentifier, str(destination)))
         if localtype == 0:
             # On balance un accusé de reception
-            self.layer6_outgoingPDU(DestinationtoID(self.__ownIdentifier), ord(self.__ownIdentifier), 1, pdu, 255)
+            next, message = self.layer6_outgoingPDU(DestinationtoID(self.__ownIdentifier), ord(self.__ownIdentifier), 1, pdu, 255)
+            return next, message
         elif localtype == 1:
             # Type Accusé de reception
-            self.application_layer_outgoingPDU(localtype)
+            next, message = self.application_layer_outgoingPDU(localtype)
+            return next, message
         elif localtype == 2:
             # Type Données
             # Rien de particulier avec la source
-            self.layer7_incomingPDU(localtype, source, pdu)
+            next, message = self.layer7_incomingPDU(localtype, source, pdu)
+            return next, message
         elif localtype == 3:
             # Reception message accusé
             None
@@ -360,10 +419,128 @@ class NetworkStack(object):
             checksum = int.from_bytes(pdu[0:2],byteorder="little",signed=False)
             pdu = pdu[2:]
         if (HashageAJA(pdu) == checksum):
-            self.application_layer_incomingPDU(localtype, source, pdu)
+            next, message = self.application_layer_incomingPDU(localtype, source, pdu)
+            return next, message
         else:
             # Destruction du paquet
+            print("FUCK OFF")
             None
+
+############
+############ MULTIPLEXAGE 
+############
+
+# Gestion du train [NbMessage | @SRC | Slot1 | Slot2 | Slot3 ]
+
+    def layerT1_incomingPDU(self, interface, pdu):
+        time.sleep(self.__layerDelay)
+
+        self.__debugOut.debugOutLayer(self.__ownIdentifier,2,self.__debugOut.INFO,"%s: LayerTT2_in: Received (%s) on Interface %d longueur pdu (%s) " % (self.__ownIdentifier, pdu, interface, len(pdu)))
+        if interface == 0 : # same ring
+            # On doit décapsuler le paquet pour check le protocole.
+            if pdu!=None:
+                # On prend le premier octet pour check si c'est notre protocol !
+                nbmessage=int.from_bytes(pdu[0:1],byteorder="little",signed=False)
+                pdu=pdu[1:]
+                self.__debugOut.debugOutLayer(self.__ownIdentifier,2,self.__debugOut.INFO,"%s: LayerTT2_in: [AJA-TRAIN] (%s) -> @SRC ?\n" % (self.__ownIdentifier, pdu))
+                self.layerT2_incomingPDU(nbmessage, pdu)
+        else:
+            pass
+
+    def layerT2_incomingPDU(self, nbmessage, pdu):
+        time.sleep(self.__layerDelay)
+        if pdu!=None:
+            source = int.from_bytes(pdu[0:1],byteorder="little",signed=False)
+            pdu=pdu[1:]
+            self.__debugOut.debugOutLayer(self.__ownIdentifier,3,self.__debugOut.INFO,"%s: LayerTT3_in: Received (%s) @src (%s) ? " % (self.__ownIdentifier, pdu, source))
+        if (nbmessage == 0) and (source == ord(self.__ownIdentifier)):
+            # On est revenu au début, donc on donne le token avant de recommencer.
+            self.layerT3_incomingPDU(nbmessage, source, pdu, True)
+        else:
+            # Sinon on s'en balance et on continue
+            if (nbmessage == 0):
+                # On a pas de messages alors on
+                # self.layerTX_outgoingPDU()
+                self.layerT3_incomingPDU(nbmessage, source, pdu)
+            else:
+                # On a des messages
+                self.layerT3_incomingPDU(nbmessage, source, pdu)
+
+    def layerT3_incomingPDU(self, nbmessage, source, pdu, token = False):
+        time.sleep(self.__layerDelay)
+        if pdu!=None:
+            # print("TRYYY")
+            # print(pdu)
+            slot1 = pdu[0:49]
+            pdu = pdu[49:]
+            self.__debugOut.debugOutLayer(self.__ownIdentifier,4,self.__debugOut.INFO,"%s: LayerTT4_in: slot1 (%s) ? " % (self.__ownIdentifier, slot1))
+            if token:
+                newslot1, message = self.application_layer_outgoingPDU(0)
+            else:
+                newslot1, message = self.layer2_incomingPDU(0, slot1)
+            newnbmessage = message
+            self.layerT4_incomingPDU(newnbmessage, source, newslot1, pdu)
+
+    def layerT4_incomingPDU(self, newnbmessage, source, newslot1, pdu):
+        time.sleep(self.__layerDelay)
+        if pdu!=None:
+            slot2 = pdu[0:49]
+            pdu = pdu[49:]
+            self.__debugOut.debugOutLayer(self.__ownIdentifier,5,self.__debugOut.INFO,"%s: LayerTT5_in:slot2 (%s) ? " % (self.__ownIdentifier, slot2))
+            newslot2, message = self.layer2_incomingPDU(0, slot2)
+            nbmessage = message + newnbmessage
+            self.layerT5_incomingPDU(nbmessage, source, newslot1, newslot2, pdu)
+
+    def layerT5_incomingPDU(self, nbmessage, source, newslot1, newslot2, pdu):
+        time.sleep(self.__layerDelay)
+        if pdu!=None:
+            slot3 = pdu[0:]
+            self.__debugOut.debugOutLayer(self.__ownIdentifier,6,self.__debugOut.INFO,"%s: LayerTT6_in:slot3 (%s) ? " % (self.__ownIdentifier, slot3))
+            newslot3, message = self.layer2_incomingPDU(0, slot3)
+            newnbmessage = message + nbmessage
+            self.layerT5_outgoingPDU(newnbmessage, source, newslot1, newslot2, newslot3)
+
+    def layerT5_outgoingPDU(self, newnbmessage, source, newslot1, newslot2, newslot3):
+        time.sleep(self.__layerDelay)
+        self.__debugOut.debugOutLayer(self.__ownIdentifier,6,self.__debugOut.INFO,"%s: LayerTT6_out: Received (%s)  ? " % (self.__ownIdentifier, newslot3))
+        pdu = newslot3
+        self.layerT4_outgoingPDU(newnbmessage, source, newslot1, newslot2, pdu)
+
+    def layerT4_outgoingPDU(self, newnbmessage, source, newslot1, newslot2, pdu):
+        time.sleep(self.__layerDelay)
+        self.__debugOut.debugOutLayer(self.__ownIdentifier,5,self.__debugOut.INFO,"%s: LayerTT5_out: Received (%s) slot2 (%s) ? " % (self.__ownIdentifier, pdu, newslot2))
+        pdu = newslot2+pdu
+        self.layerT3_outgoingPDU(newnbmessage, source, newslot1, pdu)
+
+    def layerT3_outgoingPDU(self, newnbmessage, source, newslot1, pdu):
+        time.sleep(self.__layerDelay)
+        self.__debugOut.debugOutLayer(self.__ownIdentifier,4,self.__debugOut.INFO,"%s: LayerTT4_out: Received (%s) slot2 (%s) ? " % (self.__ownIdentifier, pdu, newslot1))
+        pdu = newslot1+pdu
+        self.layerT2_outgoingPDU(newnbmessage, source, pdu)
+
+    def layerT2_outgoingPDU(self, newnbmessage, source, pdu):
+        time.sleep(self.__layerDelay)
+        self.__debugOut.debugOutLayer(self.__ownIdentifier,3,self.__debugOut.INFO,"%s: LayerTT3_out: Received (%s) LA ? " % (self.__ownIdentifier, pdu))
+        src = DestinationtoID(source)
+        print(pdu)
+        print(src)
+        pdu = src.to_bytes(1,byteorder="little")+pdu
+        self.layerT1_outgoingPDU(0, newnbmessage, pdu)
+
+    def layerT1_outgoingPDU(self, interface, newnbmessage, pdu):
+        time.sleep(self.__layerDelay)
+        self.__debugOut.debugOutLayer(self.__ownIdentifier,2,self.__debugOut.INFO,"%s: LayerTT2_out: Received (%s) BY ? " % (self.__ownIdentifier, pdu))
+        pdu = newnbmessage.to_bytes(1,byteorder="little")+pdu
+        if self.__sendDelay!=0:
+            self.__debugOut.debugOutLayer(self.__ownIdentifier,2,self.__debugOut.INFO,"%s: LayerTT2_out: Sleeping for %ds" % (self.__ownIdentifier,self.__sendDelay))
+            time.sleep(self.__sendDelay)
+        self.__layerPhy.API_sendData(interface, pdu)
+
+
+
+
+def CheckMsg(string):
+    return len(string) <= 40
 
 def HashageAJA(sdu):
     return int.from_bytes(sdu, byteorder='little')%65500

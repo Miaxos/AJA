@@ -66,21 +66,23 @@ if __name__ == '__main__':
     # Get the global debug messages from the server for the graphical interface (this shall only be done for one computer)
     computer1.enableGlobalDebug()
     # Configure the delay in each layer and before sending the packet out of the computer (for debugging)
-    computer1.debugConfigureNetworkstackDelay(sendDelay=3,layerDelay=3)
+    computer1.debugConfigureNetworkstackDelay(sendDelay=0.2,layerDelay=0.2)
     
     __debugOut.debugOutSource("Main",__debugOut.srcComputer,__debugOut.INFO,"Instanciation computer 2")
     computer2=Computer(ownIdentifier="B", masterHost=masterHostIp, baseport=10000,statusUpdateSeconds=10)
-    computer2.debugConfigureNetworkstackDelay(sendDelay=3,layerDelay=3)
+    computer2.debugConfigureNetworkstackDelay(sendDelay=0.2,layerDelay=0.2)
 
     # We may want to have a third computer somewhen
     # In this case, we may even use the alternative network stack (networkStackNumber=1) which may come in handy to combine two implementations in one trial
-    if False:
+    if True:
         __debugOut.debugOutSource("Main",__debugOut.srcComputer,__debugOut.INFO,"Instanciation computer 3")
-        if False:
-            computer3=Computer(ownIdentifier="C", masterHost=masterHostIp, baseport=10000, networkStackNumber=0)
+        if True:
+            # computer3=Computer(ownIdentifier="C", masterHost=masterHostIp, baseport=10000, networkStackNumber=0)
+            computer3=Computer(ownIdentifier="C", masterHost=masterHostIp, baseport=10000,statusUpdateSeconds=10)
+            computer3.debugConfigureNetworkstackDelay(sendDelay=0.2,layerDelay=0.2)
         else:
             computer3=Computer(ownIdentifier="C", masterHost=masterHostIp, baseport=10000, networkStackNumber=1)
-        computer3.debugConfigureNetworkstackDelay(sendDelay=3,layerDelay=0)
+        #computer3.debugConfigureNetworkstackDelay(sendDelay=3,layerDelay=0)
     
     # Waiting three seconds to allow for the connections on the PHY Layer
     time.sleep(3)
